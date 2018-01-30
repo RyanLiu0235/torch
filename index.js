@@ -1,19 +1,40 @@
+var PENDING = 'PENDING'
+var FULFILLED = 'FULFILLED'
+var REJECTED = 'REJECTED'
+
+var noop = function() {}
+
 var Promise = function(executor) {
   var promise = this
   promise._resolves = []
-  var resolve = function(value) {
-    var _resolve = null
-    while (_resolve = promise._resolves.shift()) {
-      _resolve(value)
+  promise._rejects = []
+  promise.status = PENDING
+
+  var handle = function(status, value) {
+    // status should be immutable once mutated from PENDING
+    if (promise.status !== PENDING) return
+    promise.status = status
+    var queue = promise[status === FULFILLED ? '_resolves' : '_rejects']
+    var _handle = null
+
+    while (_handle = queue.shift()) {
+      _handle(value)
     }
   }
-  executor(resolve)
-}
+  var resolve = function(value) {
+    handle(FULFILLED, value)
+  }
+  var reject = function(value) {
+    handle(REJECTED, value)
+  }
+  executor(resolve, reject)
 
-Promise.prototype.then = function(onFulfilled) {
-  this._resolves.push(onFulfilled)
+  this.then = function(onFulfilled, onRejected) {
+    this._resolves.push(typeof onFulfilled === 'function' ? onFulfilled : noop)
+    this._rejects.push(typeof onRejected === 'function' ? onRejected : noop)
 
-  return this
+    return this
+  }
 }
 
 module.exports = Promise
