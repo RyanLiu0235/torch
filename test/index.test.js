@@ -1,30 +1,20 @@
 var Promise = require('../')
-var expect = require('chai').expect
+var tests = require('promises-aplus-tests')
+var adapter = {}
 
-describe('the basic usage of Promise', function() {
-  it('should be handled with resolve when fulfilled', function(done) {
-    var promise = new Promise(function(resolve) {
-      setTimeout(function() {
-        resolve('fulFilled')
-        done()
-      }, 1000)
-    })
-    promise.then(rs => {
-      expect(rs).to.be.equal('fulFilled')
-    })
+adapter.deferred = function() {
+  var resolve, reject
+  var promise = new Promise(function(_resolve, _reject) {
+    resolve = _resolve
+    reject = _reject
   })
+  return {
+    promise: promise,
+    resolve: resolve,
+    reject: reject
+  }
+}
+adapter.resolved = Promise.resolve
+adapter.rejected = Promise.reject
 
-  it('should be thenable in chain', function(done) {
-    var promise = new Promise(function(resolve) {
-      setTimeout(function() {
-        resolve('fulFilled')
-        done()
-      }, 1000)
-    })
-    promise.then(rs => {
-      return rs
-    }).then(rs => {
-      expect(rs).to.be.equal('fulFilled')
-    })
-  })
-})
+tests.mocha(adapter)
