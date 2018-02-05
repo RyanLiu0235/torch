@@ -2,39 +2,80 @@ var PENDING = 'PENDING'
 var FULFILLED = 'FULFILLED'
 var REJECTED = 'REJECTED'
 
-var noop = function() {}
-
+var isFunction = function(fun) {
+  return typeof fun === 'function'
+}
+var isPromise = function(instance) {
+  return instance instanceof Promise
+}
 var Promise = function(executor) {
   var promise = this
-  promise._resolves = []
-  promise._rejects = []
-  promise.status = PENDING
+  var deferreds = []
+  var status = PENDING
 
-  var handle = function(status, value) {
-    // status should be immutable once mutated from PENDING
-    if (promise.status !== PENDING) return
-    promise.status = status
-    var queue = promise[status === FULFILLED ? '_resolves' : '_rejects']
-    var _handle = null
+  var handle = function(value) {
+    setTimeout(function() {
+      if (deferreds.length > 0) {
+        var deferred = deferreds.shift()
+        var _resolve = deferred.resolve
+        var _reject = deferred.reject
+        var handler = deferred[status === FULFILLED ? 'onFulfilled' : 'onRejected']
+        var ret
 
-    while (_handle = queue.shift()) {
-      _handle(value)
-    }
+        if (handler === null) {
+          status === FULFILLED ? _resolve(value) : _reject(value)
+          return
+        } else {
+          try {
+            var ret = handler(value)
+          } catch (e) {
+            _reject(e)
+            return
+          }
+          _resolve(ret)
+        }
+      }
+    }, 0)
   }
+
   var resolve = function(value) {
-    handle(FULFILLED, value)
+    if (status !== PENDING) return
+    if (value instanceof Promise) return value
+    status = FULFILLED
+    handle(value)
   }
   var reject = function(value) {
-    handle(REJECTED, value)
+    if (status !== PENDING) return
+    status = REJECTED
+    handle(value)
   }
   executor(resolve, reject)
 
   this.then = function(onFulfilled, onRejected) {
-    this._resolves.push(typeof onFulfilled === 'function' ? onFulfilled : noop)
-    this._rejects.push(typeof onRejected === 'function' ? onRejected : noop)
-
-    return this
+    return new promise.constructor(function(resolve, reject) {
+      var handle = new Handler(onFulfilled, onRejected, resolve, reject)
+      deferreds.push(handle)
+    })
   }
 }
 
+var Handler = function(onFulfilled, onRejected, resolve, reject) {
+  this.onFulfilled = isFunction(onFulfilled) ? onFulfilled : null
+  this.onRejected = isFunction(onRejected) ? onRejected : null
+  this.resolve = resolve
+  this.reject = reject
+}
+
+Promise.resolve = function(value) {
+  if (value instanceof Promise) return value
+  return new Promise(function(resolve) {
+    resolve(value)
+  })
+}
+
+Promise.reject = function(value) {
+  return new Promise(function(resolve, reject) {
+    reject(value)
+  })
+}
 module.exports = Promise
