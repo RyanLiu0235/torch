@@ -16,23 +16,25 @@ var Promise = function(executor) {
   var handle = function(value) {
     setTimeout(function() {
       if (deferreds.length > 0) {
-        var deferred = deferreds.shift()
-        var _resolve = deferred.resolve
-        var _reject = deferred.reject
-        var handler = deferred[status === FULFILLED ? 'onFulfilled' : 'onRejected']
-        var ret
+        var deferred
+        while (deferred = deferreds.shift()) {
+          var _resolve = deferred.resolve
+          var _reject = deferred.reject
+          var handler = deferred[status === FULFILLED ? 'onFulfilled' : 'onRejected']
+          var ret
 
-        if (handler === null) {
-          status === FULFILLED ? _resolve(value) : _reject(value)
-          return
-        } else {
-          try {
-            var ret = handler(value)
-          } catch (e) {
-            _reject(e)
+          if (handler === null) {
+            status === FULFILLED ? _resolve(value) : _reject(value)
             return
+          } else {
+            try {
+              var ret = handler(value)
+            } catch (e) {
+              _reject(e)
+              return
+            }
+            _resolve(ret)
           }
-          _resolve(ret)
         }
       }
     }, 0)
