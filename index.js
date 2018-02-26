@@ -28,7 +28,7 @@ var Promise = function(executor) {
             return
           } else {
             try {
-              var ret = handler(value)
+              ret = handler(value)
             } catch (e) {
               _reject(e)
               return
